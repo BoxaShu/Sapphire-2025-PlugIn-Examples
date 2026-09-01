@@ -32,6 +32,21 @@ namespace SapphirLookup
       SapphireLib.AutoStorey storey = null;
       try
       {
+        // Задаем ширину (в количестве символов)
+        Console.WindowWidth = 150;
+
+        // Задаем высоту (в строках)
+        Console.WindowHeight = 70;
+
+        // Рекомендуется также расширить экранный буфер, 
+        // чтобы не появлялись полосы прокрутки, если таблица широкая
+        Console.BufferWidth = 150;
+        Console.BufferHeight = 1000;
+
+
+
+
+
         Console.WriteLine("Пытаемся подключиться к открытому Sapphire...");
 
         // 1. Получаем GUID (идентификатор класса) по текстовому ProgID
@@ -59,7 +74,7 @@ namespace SapphirLookup
         //activeDoc.SetActiveStorey(1);
         ////Получить выбранный в Сапфире объект
 
-        Console.WriteLine($"В Sapphire выбрано: {activeDoc.CountSelectedModel} моделей");
+        Console.WriteLine($"В Sapphire выбрано моделей: {activeDoc.CountSelectedModel}");
 
         for (int i = 0; i < activeDoc.CountSelectedModel; i++)
         {
@@ -85,6 +100,12 @@ namespace SapphirLookup
       catch (COMException ex) when ((uint)ex.HResult == 0x800401E3) // MK_E_UNAVAILABLE
       {
         Console.WriteLine("Ошибка: Sapphire в данный момент вообще не запущен на компьютере.");
+      }
+      catch (PlatformNotSupportedException)
+      {
+        // Этот блок сработает на Linux/macOS или в Windows Terminal,
+        // где программно изменить размер окна системно запрещено
+        Console.WriteLine("Окружение не поддерживает принудительное изменение размера окна.");
       }
       catch (Exception ex)
       {
