@@ -24,20 +24,20 @@ namespace SapphireTest
 
     static void Main(string[] args)
     {
-      string progId = "Sapphire.Application"; //"Excel.Application";
+      string progId = "Sapphire.Application"; 
       SapphireLib.Application m_pSapApp = null;
       SapphireLib.AutoDocument activeDoc = null;
       SapphireLib.AutoProject project = null;
       SapphireLib.AutoStorey storey = null;
       try
       {
-        Console.WriteLine("Пытаемся подключиться к открытому Excel...");
+        Console.WriteLine("Пытаемся подключиться к открытому Sapphire...");
         
         // 1. Получаем GUID (идентификатор класса) по текстовому ProgID
         int hr = CLSIDFromProgIDEx(progId, out Guid clsid);
         if (hr < 0) Marshal.ThrowExceptionForHR(hr);
 
-        // 2. Запрашиваем ссылку на уже запущенный процесс Excel
+        // 2. Запрашиваем ссылку на уже запущенный процесс Sapphire
         GetActiveObject(ref clsid, IntPtr.Zero, out object comObject);
         m_pSapApp = (SapphireLib.Application)comObject; // неявно приводится к dynamic
 
@@ -50,7 +50,6 @@ namespace SapphireTest
         {
           activeDoc = (SapphireLib.AutoDocument)m_pSapApp.NewDocument();  // создаем новый документ
         }
-
 
         project = (SapphireLib.AutoProject)activeDoc.GetActiveProject();
         if (project == null)
@@ -98,7 +97,7 @@ namespace SapphireTest
       }
       catch (COMException ex) when ((uint)ex.HResult == 0x800401E3) // MK_E_UNAVAILABLE
       {
-        Console.WriteLine("Ошибка: Excel в данный момент вообще не запущен на компьютере.");
+        Console.WriteLine("Ошибка: Sapphire в данный момент вообще не запущен на компьютере.");
       }
       catch (Exception ex)
       {
@@ -313,7 +312,10 @@ namespace SapphireTest
                                                                                           //         Pnt[i] = pnt[i];   // заносим координаты точек в массив
           var Pnt = new Object[] { 0.0, 0.0, 0.0, 4.0, 0.0, 0.0, 4.0, 3.0, 0.0 }; // объявляем массив точек
           Line.SetPoints(Pnt); // занесли точки в линию
-          Wall.set_Parameter("M_THICKNESS", 0.25); // Толщина стены [м] (имена параметров можно посмотреть в окне свойств объекта, если включить опцию "Настройки САПФИР\редактирование\таблица параметров\показ мнемоник", или см. документацию)
+          Wall.set_Parameter("M_THICKNESS", 0.25); 
+		  
+		  // Толщина стены [м] (имена параметров можно посмотреть в окне свойств объекта, 
+		  //если включить опцию "Настройки САПФИР\редактирование\таблица параметров\показ мнемоник", или см. документацию)
                                                    // или
                                                    // Wall.Parameter["M_THICKNESS"] = 0.25;
           Wall.MakeModel();  // создать модель по параметрам
@@ -395,7 +397,6 @@ namespace SapphireTest
       }
     }
 
-
     /// <summary>
     /// Доступ к объектам проекта
     /// </summary>
@@ -423,16 +424,16 @@ namespace SapphireTest
               switch (type_Obj)
               {
                 case TM_WALL:
-                  Console.WriteLine("Стена");
+                  Console.WriteLine($"Стена {Obj.ID}_{Obj.TmpId}");
                   break;
                 case TM_SLAB:
-                  Console.WriteLine("Плита");
+                  Console.WriteLine($"Плита {Obj.ID}_{Obj.TmpId}");
                   break;
                 case TM_COLUMN:
-                  Console.WriteLine("Колонна");
+                  Console.WriteLine($"Колонна {Obj.ID}_{Obj.TmpId}");
                   break;
                 case TM_BEAM:
-                  Console.WriteLine("Балка");
+                  Console.WriteLine($"Балка {Obj.ID}_{Obj.TmpId}");
                   break;
                 default:
                   continue;
@@ -470,6 +471,7 @@ namespace SapphireTest
         }
       }
     }
+
 
     /// <summary>
     /// Материалы объекта 

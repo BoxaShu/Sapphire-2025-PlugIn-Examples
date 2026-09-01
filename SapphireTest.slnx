@@ -1,3 +1,4 @@
 <Solution>
-  <Project Path="SapphireTest/SapphireTest.csproj" />
+  <Project Path="SapphireTest/SapphireTest.csproj" Id="48ff7507-7b5e-4cf4-a945-6f5bf3458f5c" />
+  <Project Path="SapphirLookup/SapphirLookup.csproj" Id="9773b903-b219-443b-8a0f-e6b2f446b206" />
 </Solution>
