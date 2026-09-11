@@ -1,4 +1,11 @@
 <Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="LiraSAPRTest/LiraSAPRTest.csproj" Id="1e29f499-26fe-490b-8d21-dc6d56623032" />
+  <Project Path="LiraSAPRTestSelection/LiraSAPRTestSelection.csproj" Id="9b2e274f-92e2-495e-b656-3348487e8cf7" />
   <Project Path="SapphireTest/SapphireTest.csproj" Id="48ff7507-7b5e-4cf4-a945-6f5bf3458f5c" />
   <Project Path="SapphirLookup/SapphirLookup.csproj" Id="9773b903-b219-443b-8a0f-e6b2f446b206" />
 </Solution>
