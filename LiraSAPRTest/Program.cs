@@ -6,10 +6,13 @@
 // подключение библиотеки LiraSapphireRes (LiraSAPR 2025)
 using LiraSapphire;
 using LiraSapphireRes;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 namespace LiraSAPRTest
 {
+
+
   internal class Program
   {
 
@@ -26,14 +29,224 @@ namespace LiraSAPRTest
     {
       //GetNodeDisplacements();
       //LoadCombinationForces();
-      GetSelectedElem();
+      //GetSelectedElem();
       //GetElementGeom();
-
+      GetSelectedElemReinforcement();
     }
 
     private static void GetElementGeom()
     {
+      // Запускаем ВИЗОР
+      LiraApplication App = new LiraApplication();
 
+      // Создаём в нём новую расчётную схему:
+      LiraDocument Doc = App.ActiveDocument;
+
+      var Elements = GetTableRows<kLiraTable_Elements_TypeAndNodes_TableRow>(Doc,
+                                  (LiraTableEnum)LiraTableEnumHelp.kLiraTable_Elements_TypeAndNodes);
+
+      var Nodes = GetTableRows<kLiraTable_Nodes_Coordinates_TableRow>(Doc,
+                               (LiraTableEnum)LiraTableEnumHelp.kLiraTable_Nodes_Coordinates);
+
+      var Stiffnesses = GetTableRows<kLiraTable_Stiffnesses_TableRow>(Doc,
+                                     (LiraTableEnum)LiraTableEnumHelp.kLiraTable_Stiffnesses);
+
+      var ElementStiffnesses = GetTableRows<kLiraTable_ElementsStiffnesses_TableRow>(Doc,
+                                       (LiraTableEnum)LiraTableEnumHelp.kLiraTable_Elements_Stiffnesses);
+
+
+
+
+
+      int i = 0;
+      // теперь обращение по именам, а не по индексам
+      foreach (var el in Elements)
+      {
+        Console.WriteLine($"\n\t\tElement number: {el.ID}");
+        Console.WriteLine($"\t\tТип:             {el.Type}");
+        Console.WriteLine($"\t\tУзлы:             {string.Join(", ", el.NodeIds)}");
+        if (i < 10) { i++; } else { i = 0; break; }
+      }
+      // теперь обращение по именам, а не по индексам
+      foreach (var el in Nodes)
+      {
+        Console.WriteLine($"\n\t\tNode number: {el.ID}");
+        Console.WriteLine($"\t\tКоординаты:    {el.ToString()}");
+        if (i < 10) { i++; } else { i = 0; break; }
+      }
+
+      // теперь обращение по именам, а не по индексам
+      foreach (var el in Stiffnesses)
+      {
+        Console.WriteLine($"\n\t\tStiffnesse number: {el.Number}");
+        Console.WriteLine($"\t\tТип:             {el.Type}");
+        Console.WriteLine($"\t\tЦвет:             {el.Color}");
+        Console.WriteLine($"\t\tКомментарий:  {el.Comment}");
+        Console.WriteLine($"\t\tПараметры:      {el.Parameters}");
+        if (i < 10) { i++; } else { i = 0; break; }
+      }
+
+
+      // теперь обращение по именам, а не по индексам
+      foreach (var el in ElementStiffnesses)
+      {
+        Console.WriteLine($"\n\t\tElement number: {el.Number}");
+        Console.WriteLine($"\t\tТип жесткости:    {el.StiffnessNumber}");
+        if (i < 10) { i++; } else { i = 0; break; }
+      }
+    }
+
+    public static void GetSelectedElemReinforcement()
+    {
+      // Запускаем ВИЗОР
+      LiraApplication App = new LiraApplication();
+
+      // Создаём в нём новую расчётную схему:
+      LiraDocument Doc = App.ActiveDocument;
+
+      object pNumbers = null; //Тут будут лежать номера выбранных в Лире элементов
+
+      Doc.GetSelection(ref pNumbers, LiraSelEnum.kLiraSel_Els);
+
+      // Явное приведение к массиву int
+      object[] sNumbers = (object[])pNumbers;
+
+      var Result = new LiraResultsAccess();
+
+      // объявление и инициализация интерфейса Request (запрос)
+      var Request = Result.CreateNewRequest(LiraRequestEnum.kLiraRequest_SelectedReinforcement) as LiraSelectedReinforcementRequest;
+
+      // объявление интерфейса Response (ответ)
+      LiraSelectedReinforcementResponse Response;
+
+      // инициализация поля DocumentName (имя задачи)
+      Request.DocumentName = Doc.Title;
+
+      // инициализация поля, отвечающего за номер варианта подбора арматуры
+      Request.DesignOption = 1;
+
+      // инициализация списка элементов
+      //Request.Elements.AddFromString("1611,75,96");
+
+
+      // заполнение массива Elements номерами конечных элементов
+      //Request.Elements.AddFromString("1-100");
+      foreach (var element in sNumbers)
+      {
+        Request.Elements.AddFromString(element.ToString());
+      }
+
+
+      // инициализация массива категорий данных армирования
+      //LiraReinforcementDataEnum[] RD = { LiraReinforcementDataEnum.kLiraReinforcementData_Total, LiraReinforcementDataEnum.kLiraReinforcementData_Strength, LiraReinforcementDataEnum.kLiraReinforcementData_Torsion };
+      LiraReinforcementDataEnum[] RD = { LiraReinforcementDataEnum.kLiraReinforcementData_Total, LiraReinforcementDataEnum.kLiraReinforcementData_Strength };
+
+
+      // строковое представление элементов RD
+      //string[] RDstr = { "Total", "Strn.", "Tors." };
+      string[] RDstr = { "Полн", "Проч"};
+
+      Request.ReinforcementData.Count = RD.Length;
+
+      // заполнение массива категорий данных армирования в запросе
+      for (int i = 0; i < RD.Length; i++)
+        Request.ReinforcementData.Item[i] = (int)RD[i];
+
+      // обработка запроса
+      try
+      {
+        Response = Result.SelectedReinforcement(Request);
+      }
+      catch (Exception e)
+      {
+        Console.WriteLine("Error: " + e.HResult);
+        return;
+      }
+
+      // массив случайных элементов, для которых будут выведены на консоль данные армирования
+
+      //int[] Elements = { 1611, 75, 96 };
+      int[] Elements = sNumbers.Cast<int>().ToArray();
+
+        string row = "+-------+------+-------+-------+-------+-------+-------+------+------+-------+-------+-------+------+";
+
+
+      for (int i = 0; i < Elements.Length; i++)
+      {
+
+
+        Console.WriteLine(row);
+        Console.WriteLine("| Elem. | Sec. | Type. |  AS1  |  AS2  |  AS3  |  AS4  |  %X  |  %Y  | ASW1  | ASW2  | Short | Long |");
+
+        Console.WriteLine(row);
+
+
+
+        int SecCount = Response.GetSectionCount(Elements[i]);
+
+
+
+        for (int CS = 1; CS <= SecCount; CS++)
+        {
+          //for (int s = 1; s >= 0; s--)
+          //{
+            for (int k = 0; k < RD.Length; k++)
+            {
+            //// симметрия / асимметрия
+            //string SA = "S";
+            //if (s == 0)
+            //  SA = "A";
+            int s = 0;
+              // код ошибок
+              int Err = 0;
+              // получение данных армирования
+              float AS1 = Response.GetPlateAS1(Elements[i], RD[k], s, out Err);
+              float AS2 = Response.GetPlateAS2(Elements[i], RD[k], s, out Err);
+              float AS3 = Response.GetPlateAS3(Elements[i], RD[k], s, out Err);
+              float AS4 = Response.GetPlateAS4(Elements[i], RD[k], s, out Err);
+              float PreX = Response.GetPlatePercX(Elements[i],s, out Err);
+              float PreY = Response.GetPlatePercY(Elements[i], s, out Err);
+              float ASW1 = Response.GetPlateASW1(Elements[i], RD[k], s, out Err);
+              float ASW2 = Response.GetPlateASW2(Elements[i], RD[k], s, out Err);
+              float CrShrt = Response.GetPlateCrackSHORT(Elements[i], s, out Err);
+              float CrLong = Response.GetPlateCrackLONG(Elements[i], s, out Err);
+
+
+
+              //// получение данных армирования
+              //float AU1 = Response.GetBarAU1(Elements[i], CS, RD[k], s, 0, out Err);
+              //float AU2 = Response.GetBarAU2(Elements[i], CS, RD[k], s, 0, out Err);
+              //float AU3 = Response.GetBarAU3(Elements[i], CS, RD[k], s, 0, out Err);
+              //float AU4 = Response.GetBarAU4(Elements[i], CS, RD[k], s, 0, out Err);
+              //float AS1 = Response.GetBarAS1(Elements[i], CS, RD[k], s, 0, out Err);
+              //float AS2 = Response.GetBarAS2(Elements[i], CS, RD[k], s, 0, out Err);
+              //float AS3 = Response.GetBarAS3(Elements[i], CS, RD[k], s, 0, out Err);
+              //float AS4 = Response.GetBarAS4(Elements[i], CS, RD[k], s, 0, out Err);
+              //float Pre = Response.GetBarPERC(Elements[i], CS, RD[k], s, 0, out Err);
+              //float ASW1 = Response.GetBarASW1(Elements[i], CS, RD[k], s, 0, out Err);
+              //float ASW2 = Response.GetBarASW2(Elements[i], CS, RD[k], s, 0, out Err);
+              //float CrShrt = Response.GetBarCrackSHORT(Elements[i], CS, s, 0, out Err);
+              //float CrLong = Response.GetBarCrackLONG(Elements[i], CS, s, 0, out Err);
+
+
+
+              // вывод на консоль данных армирования
+              Console.Write("| {0,-5} | {1,-4} | {2,-5} ", Elements[i], CS, RDstr[k]);
+              Console.Write("| {0,-5:#.##} | {1,-5:#.##} | {2,-5:#.##} | {3,-5:#.##} ", AS1, AS2, AS3, AS4);
+              Console.Write("| {0,-4:#.##} | {1,-4:#.##} | {2,-5:#.##} | {3,-5:#.##} ", PreX, PreY, ASW1, ASW2);
+              Console.WriteLine("| {0,-5:#.##} | {1,-4:#.##} |", CrShrt, CrLong);
+
+
+
+            }
+
+          //}
+
+        }
+
+      }
+
+      Console.WriteLine(row);
 
     }
 
@@ -41,31 +254,229 @@ namespace LiraSAPRTest
     {
       // Запускаем ВИЗОР
       LiraApplication App = new LiraApplication();
+
+
+
       // Создаём в нём новую расчётную схему:
       LiraDocument Doc = App.ActiveDocument;
 
-      object pNumbers=null; //Тут будут лежать номера выбранных в Лире элементов
+      object pNumbers = null; //Тут будут лежать номера выбранных в Лире элементов
 
       Doc.GetSelection(ref pNumbers, LiraSelEnum.kLiraSel_Els);
 
-      //LiraTable Els = Doc.AllTables.Item[LiraTableEnum.kLiraTable_Elements_TypeAndNumbersOfNodes] as LiraTable;
-      LiraTable Els = Doc.AllTables.CreateNewItem(LiraTableEnum.kLiraTable_Elements_TypeAndNodes) as LiraTable;
+      // Явное приведение к массиву int
+      object[] sNumbers = (object[])pNumbers;
 
+      var elements = GetTableRows<kLiraTable_Elements_TypeAndNodes_TableRow>(Doc, (LiraTableEnum)LiraTableEnumHelp.kLiraTable_Elements_TypeAndNodes);
+
+
+      var nodes = GetTableRows<kLiraTable_Nodes_Coordinates_TableRow>(Doc, (LiraTableEnum)LiraTableEnumHelp.kLiraTable_Nodes_Coordinates);
+
+      //Получаю только выбранные элементы
+      var selected = elements.Where(q => sNumbers.Contains(q.ID)).ToList();
+
+      GetLoadCombinationForces(Doc, selected);
+
+    }
+
+
+
+    /// <summary>
+    /// Обобщённый метод: находит или создаёт таблицу нужного типа и заполняет список строк.
+    /// </summary>
+    private static List<T> GetTableRows<T>(LiraDocument doc, LiraTableEnum tableEnum)
+        where T : ILiraTableRow, new()
+    {
+      LiraTable table = GetOrCreateTable(doc, tableEnum);
 
       object data = null;
-      Els.GetContents(ref data);
-
-      // Явное приведение к двумерному массиву int
-      object[,] array = (object[,])data;
-
-      // Доступ к элементам
-      object value0 = array[92, 0]; // 2
-      object value1 = array[92, 1]; // 2
-      object value2 = array[92, 2]; // 2
+      table.GetContents(ref data);
 
 
-      //var el = data[93 - 1];
+      var array = (object[,])data;
+
+      int rows = array.GetLength(0);
+      var result = new List<T>(rows);
+
+      for (int i = 0; i < rows; i++)
+      {
+        var row = new T();
+        row.LoadFromArray(array, i);
+        result.Add(row);
+      }
+
+      return result;
     }
+
+    private static LiraTable GetOrCreateTable(LiraDocument doc, LiraTableEnum tableEnum)
+    {
+      // Ищем уже существующую таблицу нужного типа
+      for (int i = 0; i < doc.AllTables.ItemCount; i++)
+      {
+        if (doc.AllTables.Item[i].Type == tableEnum)
+        {
+          var tabl = doc.AllTables.Item[i] as LiraTable;
+          if (tabl != null)
+          {
+            tabl.RefillFromModel(); //обновляем модель
+            return tabl;
+          }
+        }
+      }
+      // Не нашли — создаём
+      return doc.AllTables.CreateNewItem(tableEnum) as LiraTable;
+    }
+
+
+
+
+
+    private static void GetLoadCombinationForces(LiraDocument Doc, List<kLiraTable_Elements_TypeAndNodes_TableRow> elements)
+    {
+      var Result = new LiraResultsAccess();
+
+      // объявление и инициализация интерфейса Request (запрос)
+      var Request = Result.CreateNewRequest(LiraRequestEnum.kLiraRequest_LoadCombinationForces) as LiraLoadCombinationForcesRequest;
+
+      // объявление интерфейса Response (ответ)
+      LiraLoadCombinationForcesResponse Response;
+
+      // инициализация поля DocumentName (имя задачи)
+      Request.DocumentName = Doc.Title;
+
+      // заполнение массива Elements номерами конечных элементов
+      //Request.Elements.AddFromString("1-100");
+      foreach (kLiraTable_Elements_TypeAndNodes_TableRow element in elements)
+      {
+        Request.Elements.AddFromString(element.ID.ToString());
+      }
+
+      // инициализация номера таблицы РСН
+      Request.LoadCombinationTable = 1;
+
+
+      // инициализация массива, содержащего перечень предельных состояний внутренних усилий (РСН расчетные и РСН нормативные)
+
+      // для получения всех предельных состояний необходимо оставить поле LoadCombinationLimitState пустым или перечислить все виды предельных состояний
+
+      Request.LoadCombinationLimitState.Count = 2;
+
+
+
+      // РСН расчетные
+
+      Request.LoadCombinationLimitState.Item[0] = (int)LiraLimitStateForcesEnum.kLiraLimitStateForces_UltimateFull;
+
+
+
+      // РСН нормативные
+      Request.LoadCombinationLimitState.Item[1] = (int)LiraLimitStateForcesEnum.kLiraLimitStateForces_ServiceabilityFull;
+
+
+      // обработка запроса
+      try
+      {
+        Response = Result.LoadCombinationForces(Request);
+      }
+      catch (Exception e)
+      {
+        Console.WriteLine("Error: " + e.HResult);
+        return;
+      }
+
+      // получение данных о всех загружениях
+      //LiraLoadCaseInfos LoadCases = Response.LoadCases;
+
+      // получение данных о всех РСН
+      LiraLoadCombinationInfos LoadCombinations = Response.LoadCombinations;
+
+
+      // инициализация перечня внутренних усилий (LiraForceEnum)
+      string[] StringElementForces = { "Undefined", "BarN", "BarMx", "BarMy", "BarQz", "BarMz", "BarQy", "BarRy", "BarRz", "BarBw", "BarTw", "PlateNx", "PlateNy", "PlateNz", "PlateTxy", "PlateTxz", "PlateMx", "PlateMy", "PlateMxy", "PlateQx", "PlateQy", "PlateRz", "SolidNx", "SolidNy", "SolidNz", "SolidTxy", "SolidTxz", "SolidTyz", "SpecElementRx", "SpecElementRy", "SpecElementRz", "SpecElementRux", "SpecElementRuy", "SpecElementRuz", "Spec_58_59_Qz", "Spec_58_59_Ny", "Spec_58_59_Qx", "Spec_310_N", "Spec_310_My", "Spec_310_Qz", "Spec_310_Mx", "Spec_310_Mz", "Spec_310_Qy", "Spec_264_N", "Spec_264_Qz", "Spec_264_Qy" };
+
+
+      // перечень наименований семейств конечных элементов (LiraElementFamilyEnum)
+      string[] ElementFamilyes = { "Undefined", "Bar", "Plate", "Solid", "SpecElement", "Spec_58_5", "Spec_310", "Spec_264" };
+
+
+      for (int i = 0; i < LoadCombinations.Count; i++)
+      {
+        LiraLoadCombinationInfo LoadCase = LoadCombinations.Item[i];
+
+        // вывод номера загружения
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine("\n\n###########################################################");
+        Console.WriteLine("\tLoad case number: " + LoadCase.Number + $" {LoadCase.Name}\n\n");
+        Console.ResetColor();
+
+
+        // номер РСН
+        int LC = LoadCombinations.Item[i].Number;
+
+
+        foreach (var el in elements)
+        {
+          // номер элемента
+          int Element = el.ID;
+
+          // вывод на консоль номера конечного элемента
+          Console.ForegroundColor = ConsoleColor.Red;
+          Console.WriteLine("\n\t\tElement number: " + Element);
+          Console.ResetColor();
+
+          // вывод на консоль номера загружения
+          Console.WriteLine("Load combination number: " + LC);
+
+          // получение семейства (вида) конечного элемента
+          int ElementFamily = (int)Response.GetFamily(Element);
+
+          // вывод на консоль названия семейства, к которому принадлежит конечный элемент
+          Console.WriteLine("Element family: " + ElementFamilyes[ElementFamily]);
+
+          // получение усилий в конечном элементе
+          LiraLongsArray ElementForces = Response.GetForces(Element);
+
+          // вывод на консоль перечня усилий в конечном элементе
+          Console.Write("Forces: ");
+
+          for (int j = 0; j < ElementForces.Count; j++)
+            Console.Write(StringElementForces[ElementForces.Item[j]] + " ");
+
+
+          Console.WriteLine("\n------------------------------------");
+
+          //Forces: PlateNx PlateNy PlateTxy PlateMx PlateMy PlateMxy PlateQx PlateQy PlateRz
+
+          int SecCount = Response.GetSectionCount(Element);
+
+          // вывод значений усилий в элементе Element от РСН LC для всех сечений
+          // РСН расчетные
+          int LS = (int)LiraLimitStateForcesEnum.kLiraLimitStateForces_UltimateFull;
+          Console.WriteLine("РСН расчетные - Ultimate full");
+
+          for (int CS = 1; CS <= SecCount; CS++)
+          {
+            Console.WriteLine("PlateNx: " + Response.GetPlateNx(Element, CS, LC, LS));
+            Console.WriteLine("PlateNy: " + Response.GetPlateNy(Element, CS, LC, LS));
+          }
+
+          // РСН нормативные
+          LS = (int)LiraLimitStateForcesEnum.kLiraLimitStateForces_ServiceabilityFull;
+          Console.WriteLine("РСН нормативные - Serviceability full");
+          for (int CS = 1; CS <= SecCount; CS++)
+          {
+            Console.WriteLine("PlateNx: " + Response.GetPlateNx(Element, CS, LC, LS));
+            Console.WriteLine("PlateNy: " + Response.GetPlateNy(Element, CS, LC, LS));
+          }
+
+        }
+
+
+
+
+      }
+    }
+
 
     public static void LoadCombinationForces()
     {
@@ -128,10 +539,10 @@ namespace LiraSAPRTest
 
       for (int i = 0; i < LoadCombinations.Count; i++)
       {
-        LiraLoadCombinationInfo  LoadCase = LoadCombinations.Item[i];
+        LiraLoadCombinationInfo LoadCase = LoadCombinations.Item[i];
 
         // вывод номера загружения
-        Console.WriteLine("Load case number: " + LoadCase.Number+ $" {LoadCase.Name}");
+        Console.WriteLine("Load case number: " + LoadCase.Number + $" {LoadCase.Name}");
 
         //// вывод количества форм
         //Console.WriteLine("Number of dynamic mode shapes: " + LoadCase.DynamicModeShapeCount);
@@ -175,10 +586,9 @@ namespace LiraSAPRTest
 
 
       // инициализация перечня внутренних усилий (LiraForceEnum)
-
       string[] StringElementForces = { "Undefined", "BarN", "BarMx", "BarMy", "BarQz", "BarMz", "BarQy", "BarRy", "BarRz", "BarBw", "BarTw", "PlateNx", "PlateNy", "PlateNz", "PlateTxy", "PlateTxz", "PlateMx", "PlateMy", "PlateMxy", "PlateQx", "PlateQy", "PlateRz", "SolidNx", "SolidNy", "SolidNz", "SolidTxy", "SolidTxz", "SolidTyz", "SpecElementRx", "SpecElementRy", "SpecElementRz", "SpecElementRux", "SpecElementRuy", "SpecElementRuz", "Spec_58_59_Qz", "Spec_58_59_Ny", "Spec_58_59_Qx", "Spec_310_N", "Spec_310_My", "Spec_310_Qz", "Spec_310_Mx", "Spec_310_Mz", "Spec_310_Qy", "Spec_264_N", "Spec_264_Qz", "Spec_264_Qy" };
 
-     
+
 
       // получение усилий в конечном элементе
       LiraLongsArray ElementForces = Response.GetForces(Element);
@@ -211,7 +621,7 @@ namespace LiraSAPRTest
       Console.WriteLine("РСН нормативные - Serviceability full");
       for (int CS = 1; CS <= SecCount; CS++)
       {
-        Console.WriteLine("PlateNx: " + Response.GetPlateNy(Element, CS, LC, LS));
+        Console.WriteLine("PlateNy: " + Response.GetPlateNy(Element, CS, LC, LS));
       }
       //// количество сечений в элементе
       //int SectionCount = Response.GetSectionCount(Element);

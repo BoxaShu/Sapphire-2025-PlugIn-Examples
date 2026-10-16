@@ -176,6 +176,7 @@ namespace SapphirLookup
     }
 
 
+
     /// <summary>
     /// Получаем значения всех параметров объекта 
     /// </summary>
