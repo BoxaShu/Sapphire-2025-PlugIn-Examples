@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace LiraSAPRTest
+namespace LiraSAPRTest.ModelLiraSapr
 {
   //[DebuggerDisplay("ID: {ID}, X: {X}, Y: {Y}, Z: {Z}")]
   public class kLiraTable_Stiffnesses_TableRow : ILiraTableRow

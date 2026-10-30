@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace LiraSAPRTest
+namespace LiraSAPRTest.ModelLiraSapr
 {
   public interface ILiraTableRow
   {

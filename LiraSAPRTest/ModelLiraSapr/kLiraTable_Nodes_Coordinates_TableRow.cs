@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 
-namespace LiraSAPRTest
+namespace LiraSAPRTest.ModelLiraSapr
 {
   /// <summary>
   /// Строка таблицы координат узлов.

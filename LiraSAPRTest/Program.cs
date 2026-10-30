@@ -6,6 +6,7 @@
 // подключение библиотеки LiraSapphireRes (LiraSAPR 2025)
 using LiraSapphire;
 using LiraSapphireRes;
+using LiraSAPRTest.ModelLiraSapr;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
@@ -31,8 +32,37 @@ namespace LiraSAPRTest
       //LoadCombinationForces();
       //GetSelectedElem();
       //GetElementGeom();
-      GetSelectedElemReinforcement();
+      //GetSelectedElemReinforcement();
+      //GetSelectedElemLocalAxes();
+      DumpAllTableSchemas();
     }
+
+
+    private static void GetSelectedElemLocalAxes()
+    {
+      // Запускаем ВИЗОР
+      LiraApplication App = new LiraApplication();
+
+      // Создаём в нём новую расчётную схему:
+      LiraDocument Doc = App.ActiveDocument;
+
+      object pNumbers = null; //Тут будут лежать номера выбранных в Лире элементов
+
+      Doc.GetSelection(ref pNumbers, LiraSelEnum.kLiraSel_Els);
+
+      // Явное приведение к массиву int
+      object[] sNumbers = (object[])pNumbers;
+
+
+     var elements = GetTableRows<kLiraTable_Plates_LocalAxes_TableRow>(Doc,
+                            (LiraTableEnum)LiraTableEnumHelp.kLiraTable_Plates_LocalAxes);
+
+      //Получаю только выбранные элементы
+      var selected = elements.Where(q => sNumbers.Contains(q.ID)).ToList();
+
+    }
+
+
 
     private static void GetElementGeom()
     {
@@ -67,6 +97,14 @@ namespace LiraSAPRTest
         Console.WriteLine($"\t\tУзлы:             {string.Join(", ", el.NodeIds)}");
         if (i < 10) { i++; } else { i = 0; break; }
       }
+
+      var groups = ElementGrouper.SplitIntoConnectedGroups(Elements);
+
+      for (int g = 0; g < groups.Count; g++)
+      {
+        Console.WriteLine($"Группа {g}: {groups[g].Count} элементов");
+      }
+
       // теперь обращение по именам, а не по индексам
       foreach (var el in Nodes)
       {
@@ -275,7 +313,15 @@ namespace LiraSAPRTest
       //Получаю только выбранные элементы
       var selected = elements.Where(q => sNumbers.Contains(q.ID)).ToList();
 
-      GetLoadCombinationForces(Doc, selected);
+
+      var groups = ElementGrouper.SplitIntoConnectedGroups(selected);
+
+      for (int g = 0; g < groups.Count; g++)
+      {
+        Console.WriteLine($"Группа {g}: {groups[g].Count} элементов");
+      }
+
+      //GetLoadCombinationForces(Doc, selected);
 
     }
 
@@ -327,8 +373,120 @@ namespace LiraSAPRTest
       return doc.AllTables.CreateNewItem(tableEnum) as LiraTable;
     }
 
+    /// <summary>
+    /// Одноразовая утилита: печатает для каждой таблицы из <see cref="LiraTableEnumHelp"/>
+    /// количество строк/столбцов и для каждого столбца — типы значений и пример.
+    /// Нужно запустить один раз внутри Lira, скопировать вывод и по нему сгенерировать классы.
+    /// </summary>
+    private static void DumpAllTableSchemas()
+    {
+      LiraApplication App = new LiraApplication();
+      LiraDocument Doc = App.ActiveDocument;
 
+      foreach (LiraTableEnumHelp enumValue in Enum.GetValues(typeof(LiraTableEnumHelp)))
+      {
+        // Служебные значения — не реальные таблицы.
+        if (enumValue == LiraTableEnumHelp.kLiraTable_AllTables ||
+            enumValue == LiraTableEnumHelp.kLiraTable_Cnt)
+          continue;
 
+        DumpTableSchema(Doc, enumValue);
+      }
+    }
+
+    private static void DumpTableSchema(LiraDocument doc, LiraTableEnumHelp enumValue)
+    {
+      string name = enumValue.ToString();
+      try
+      {
+        LiraTable table = GetOrCreateTable(doc, (LiraTableEnum)enumValue);
+        if (table == null)
+        {
+          Console.WriteLine($"=== {name} : GetOrCreateTable вернул null ===");
+          return;
+        }
+
+        object data = null;
+        table.GetContents(ref data);
+
+        if (data is not object[,] array)
+        {
+          Console.WriteLine($"=== {name} : GetContents вернул {data?.GetType().FullName ?? "null"} ===");
+          return;
+        }
+
+        int rows = array.GetLength(0);
+        int cols = array.GetLength(1);
+        Console.WriteLine();
+        Console.WriteLine($"=== {name} : rows={rows}, cols={cols} ===");
+
+        if (rows > 0)
+        {
+          var firstRow = new List<string>(cols);
+          for (int c = 0; c < cols; c++)
+            firstRow.Add(FormatCell(array[0, c]));
+          Console.WriteLine($"    row0: [{string.Join(" | ", firstRow)}]");
+        }
+        else
+        {
+          Console.WriteLine("    (нет строк — типы столбцов определить нельзя)");
+        }
+
+        for (int c = 0; c < cols; c++)
+        {
+          var types = new List<string>();
+          var seen = new HashSet<string>();
+          object sample = null;
+
+          for (int r = 0; r < rows; r++)
+          {
+            object v = array[r, c];
+            if (v == null || v is DBNull)
+              continue;
+
+            string t = v.GetType().FullName ?? v.GetType().Name;
+            if (seen.Add(t))
+              types.Add(t);
+
+            if (sample == null)
+              sample = v;
+          }
+
+          string typeStr = types.Count == 0 ? "<empty>" : string.Join(" | ", types);
+          string sampleStr = sample == null ? "<none>" : FormatCell(sample);
+          Console.WriteLine($"    [{c}] {typeStr}  sample={sampleStr}");
+        }
+      }
+      catch (Exception ex)
+      {
+        Console.WriteLine($"=== {name} : ERROR {ex.GetType().Name} — {ex.Message} ===");
+      }
+    }
+
+    private static string FormatCell(object value)
+    {
+      if (value == null)
+        return "<null>";
+      if (value is DBNull)
+        return "<DBNull>";
+      if (value is string s)
+        return s.Length <= 80 ? $"\"{s}\"" : $"\"{s.Substring(0, 80)}…\"";
+
+      if (value is System.Collections.IEnumerable enumerable)
+      {
+        var items = new List<string>();
+        int count = 0;
+        foreach (object item in enumerable)
+        {
+          if (++count > 5)
+            break;
+          items.Add(item?.ToString() ?? "null");
+        }
+        return $"[{string.Join(", ", items)}{(count > 5 ? ", …" : "")}]";
+      }
+
+      return value.ToString() ?? "<null>";
+    }
 
 
     private static void GetLoadCombinationForces(LiraDocument Doc, List<kLiraTable_Elements_TypeAndNodes_TableRow> elements)

@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 using System.Runtime.InteropServices;
 
-namespace LiraSAPRTest; //LiraSapphire;
+namespace LiraSAPRTest.ModelLiraSapr; //LiraSapphire;
 
 //[Guid("6426790C-4E48-459A-B5FA-4D06745F9760")]
 // Внимание: описания ниже восстановлены по названиям элементов enum.

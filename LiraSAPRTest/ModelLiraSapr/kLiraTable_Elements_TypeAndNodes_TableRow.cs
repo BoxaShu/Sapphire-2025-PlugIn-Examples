@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 
-namespace LiraSAPRTest
+namespace LiraSAPRTest.ModelLiraSapr
 {
   /// <summary>
   /// Строка таблицы типов и узлов конечных элементов.
